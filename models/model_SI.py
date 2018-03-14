@@ -34,7 +34,7 @@ class SIModel:
   def load_weights(self, file_prefix):
     pass
 
-  def __get_numvals_list(self, key='omega'):
+  def __get_values_list(self, key='omega'):
     """Returns list of numerical values such as for instance omegas in reproducible order.
 
     Args:
@@ -43,13 +43,14 @@ class SIModel:
       A list containing values for that key.
     """
     variables = self.vars[key]
-    numvals = []
+    values = []
     for p in self.weights:
-      numval = K.get_value(tf.reshape(variables[p],(-1,)))
-      numvals.append(numval)
-    return numvals
+      value = K.get_value(tf.reshape(variables[p],(-1,)))
+      values.append(value)
+    return values
 
-  def __quadratic_regularizer(self, weights, vars, norm=2):
+  @staticmethod
+  def __quadratic_regularizer(weights, vars, norm=2):
     """Compute the regularization term.
 
     Args:

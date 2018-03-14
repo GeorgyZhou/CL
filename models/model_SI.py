@@ -34,6 +34,8 @@ class SIModel:
   def load_weights(self, file_prefix):
     pass
 
+
+
   def __get_values_list(self, key='omega'):
     """Returns list of numerical values such as for instance omegas in reproducible order.
 

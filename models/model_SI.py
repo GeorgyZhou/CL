@@ -35,6 +35,10 @@ class SIModel:
   def load_weights(self, file_prefix):
     pass
 
+  def _get_updates(self, weights):
+    self.weights = weights
+    self.regularizer = SIModel._quadratic_regularizer(weights, self.vars)
+
   def _get_values_list(self, key='omega'):
     """Returns list of numerical values such as for instance omegas in reproducible order.
 
@@ -50,16 +54,17 @@ class SIModel:
       values.append(value)
     return values
 
+
   @staticmethod
   def _extract_weight_changes(weights, update_ops):
     """Given a list of weights and Assign ops, identify the change in weights.
 
     Args:
-        weights: list of Variables
-        update_ops: list of Assign ops, typically computed using Keras' opt.get_updates()
+      weights: list of Variables
+      update_ops: list of Assign ops, typically computed using Keras' opt.get_updates()
 
     Returns:
-        list of Tensors containing the weight update for each variable
+      list of Tensors containing the weight update for each variable
     """
     name_to_var = {v.name: v.value() for v in weights}
     weight_update_ops = list(filter(lambda x: x.op.inputs[0].name in name_to_var, update_ops))

@@ -9,8 +9,67 @@
 # http://proceedings.mlr.press/v70/zenke17a.html
 
 import numpy as np
-
 import tensorflow as tf
+
+def _ema(decay, prev_val, new_val):
+    """Compute exponential moving average.
+
+    Args:
+        decay: 'sum' to sum up values, otherwise decay in [0, 1]
+        prev_val: previous value of accumulator
+        new_val: new value
+    Returns:
+        updated accumulator
+    """
+    if decay == 'sum':
+        return prev_val + new_val
+    assert isinstance(decay, float)
+    return decay * prev_val + (1.0 - decay) * new_val
+
+def _compute_updates(opt, loss, weights):
+  update_ops = opt.get_updates(weights, [], loss)
+  deltas, new_update_op = SIModel._extract_weight_changes(weights, update_ops)
+  grads = tf.gradients(loss, weights)
+  # Make sure  that deltas are computed _before_ the weight is updated
+  return new_update_op, grads, deltas
+
+
+def _quadratic_regularizer(weights, vars, norm=2):
+  """Compute the regularization term.
+
+  Args:
+    weights: list of Variables
+    vars: dict from variable name to dictionary containing the variables.
+          Each set of variables is stored as a dictionary mapping from weights to variables.
+          For example, vars['grads'][w] would retreive the 'grads' variable for weight w
+    norm: power for the norm of the (weights - consolidated weight)
+  Returns:
+    scalar Tensor regularization term
+  """
+  reg = 0.0
+  for w in weights:
+    reg += tf.reduce_sum(vars['omega'][w] * (w - vars['cweights'][w]))
+  return reg
+
+
+_path_int_protocol = lambda omega_decay, xi: (
+   'path_int[omega_decay=%s,xi=%s]'%(omega_decay,xi),
+    {
+        'init_updates':  [
+            ('cweights', lambda vars, w, prev_val: w.value() ),
+            ],
+        'step_updates':  [
+            ('grads2', lambda vars, w, prev_val: prev_val -vars['unreg_grads'][w] * vars['deltas'][w] ),
+            ],
+        'task_updates':  [
+            ('omega', lambda vars, w, prev_val: tf.nn.relu(_ema(omega_decay, prev_val, vars['grads2'][w]/((vars['cweights'][w]-w.value())**2+xi)))),
+            #('cached_grads2', lambda vars, w, prev_val: vars['grads2'][w]),
+            #('cached_cweights', lambda vars, w, prev_val: vars['cweights'][w]),
+            ('cweights',  lambda opt, w, prev_val: w.value()),
+            ('grads2', lambda vars, w, prev_val: prev_val*0.0 ),
+        ],
+        'regularizer_fn': _quadratic_regularizer,
+    })
 
 class SIModel:
   def __init__(self, *args, **kwargs):
@@ -37,23 +96,7 @@ class SIModel:
 
   def _get_updates(self, weights):
     self.weights = weights
-    self.regularizer = SIModel._quadratic_regularizer(weights, self.vars)
-
-  def _get_values_list(self, key='omega'):
-    """Returns list of numerical values such as for instance omegas in reproducible order.
-
-    Args:
-      key: key for values to be extracted.
-    Returns:
-      A list containing values for that key.
-    """
-    variables = self.vars[key]
-    values = []
-    for p in self.weights:
-      value = K.get_value(tf.reshape(variables[p],(-1,)))
-      values.append(value)
-    return values
-
+    self.regularizer = _quadratic_regularizer(weights, self.vars)
 
   @staticmethod
   def _extract_weight_changes(weights, update_ops):
@@ -80,30 +123,8 @@ class SIModel:
       new_weight_update_ops = [tf.assign(new_w.op.inputs[0], new_w.op.inputs[1]) for new_w in weight_update_ops]
     return weight_changes, tf.group(*(nonweight_update_ops + new_weight_update_ops))
 
-  @staticmethod
-  def _compute_updates(opt, loss, weights):
-    update_ops = opt.get_updates(weights, [], loss)
-    deltas, new_update_op = SIModel._extract_weight_changes(weights, update_ops)
-    grads = tf.gradients(loss, weights)
-    # Make sure  that deltas are computed _before_ the weight is updated
-    return new_update_op, grads, deltas
 
-  @staticmethod
-  def _quadratic_regularizer(weights, vars, norm=2):
-    """Compute the regularization term.
 
-    Args:
-      weights: list of Variables
-      vars: dict from variable name to dictionary containing the variables.
-            Each set of variables is stored as a dictionary mapping from weights to variables.
-            For example, vars['grads'][w] would retreive the 'grads' variable for weight w
-      norm: power for the norm of the (weights - consolidated weight)
-    Returns:
-      scalar Tensor regularization term
-    """
-    reg = 0.0
-    for w in weights:
-      reg += tf.reduce_sum(vars['omega'][w] * (w - vars['cweights'][]))
-    return reg
+
 
 CLModel = SIModel

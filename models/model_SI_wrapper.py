@@ -23,7 +23,8 @@ class SIModel:
     protocol_name, protocol = protocols.PATH_INT_PROTOCOL(omega_decay='sum', xi=1e-3 )
     opt = KOOptimizer(Adam(lr=self.learning_rate, beta_1=0.9, beta_2=0.999),
                       model=self.model, **protocol)
-    self.model.compile(loss='categorical_crossentropy', optimizer=opt, metrics=['accuracy'])
+    self.model.compile(loss='categorical_crossentropy', optimizer=opt,
+                       metrics=['accuracy'])
 
   def fit(self, train_type, task_dict, *args, **kwargs):
     return self.model.fit(*args, **kwargs)

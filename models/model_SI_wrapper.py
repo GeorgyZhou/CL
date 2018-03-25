@@ -1,7 +1,7 @@
 import numpy as np
 
 from keras.models import Sequential
-from keras.layers import Dense
+from keras.layers import Dense, Reshape
 from keras.optimizers import Adam
 from SI_original.pathint.optimizers import KOOptimizer
 from SI_original.pathint import protocols
@@ -17,6 +17,8 @@ class SIModel:
     assert isinstance(self.learning_rate, float)
     self.internal_input_shape = (np.prod(self.input_shape),)
     self.model = Sequential()
+    self.model.add(Reshape(target_shape=self.internal_input_shape,
+                           input_shape=self.input_shape))
     self.model.add(Dense(24, activation='relu'))
     self.model.add(Dense(24, activation='relu'))
     self.model.add(Dense(self.output_shape, activation='softmax'))

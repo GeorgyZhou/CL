@@ -3,8 +3,7 @@ import numpy as np
 from keras.models import Sequential
 from keras.layers import Dense, Reshape
 from keras.optimizers import Adam
-from SI_original.pathint.optimizers import KOOptimizer
-from SI_original.pathint import protocols
+from SI_original.pathint.optimizers import KOOptimizer, PATH_INT_PROTOCOL
 
 class SIModel:
   def __init__(self, *args, **kwargs):
@@ -22,13 +21,13 @@ class SIModel:
     self.model.add(Dense(24, activation='relu'))
     self.model.add(Dense(24, activation='relu'))
     self.model.add(Dense(self.output_shape, activation='softmax'))
-    protocol_name, protocol = protocols.PATH_INT_PROTOCOL(omega_decay='sum', xi=1e-3 )
+    protocol_name, protocol = PATH_INT_PROTOCOL(omega_decay='sum', xi=1e-3 )
     opt = KOOptimizer(Adam(lr=self.learning_rate, beta_1=0.9, beta_2=0.999),
                       model=self.model, **protocol)
     self.model.compile(loss='categorical_crossentropy', optimizer=opt,
                        metrics=['accuracy'])
 
-  def fit(self, train_type, task_dict, *args, **kwargs):
+  def fit(self, traintype, task_dict, *args, **kwargs):
     return self.model.fit(*args, **kwargs)
 
   def evaluate(self, *args, **kwargs):
@@ -40,10 +39,10 @@ class SIModel:
   def predict(self, *args, **kwargs):
     return self.model.predict(x=kwargs['x'], verbose=0)
 
-  def save_weights(self, file_prefix, overwrite=True):
-    self.model.save_weights(filepath=file_prefix + '.hdf5', overwrite=overwrite)
+  def save_weights(self, fileprefix, overwrite=True):
+    self.model.save_weights(filepath=fileprefix + '.hdf5', overwrite=overwrite)
 
-  def load_weights(self, file_prefix):
-    self.model.load_weights(filepath=file_prefix + '.hdf5')
+  def load_weights(self, fileprefix):
+    self.model.load_weights(filepath=fileprefix + '.hdf5')
 
 CLModel = SIModel

@@ -330,7 +330,7 @@ class KOOptimizer(Optimizer):
 
     def get_numvals(self, key='omega'):
         """ Returns concatenated list of numerical values such as for instance omegas in reproducible order """
-            conc = np.concatenate(self.get_numvals_list(key))
+        conc = np.concatenate(self.get_numvals_list(key))
         return conc
 
     def get_state(self):

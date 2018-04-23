@@ -1,5 +1,6 @@
 import tensorflow as tf
 import numpy as np
+import copy
 
 from utils.cab_utils import sigma
 from utils.cab_utils import sigma_prime
@@ -16,7 +17,7 @@ class CABModel:
     print (self.input_shape)
 
     self.a_0 = tf.placeholder(tf.float32, [None, self.input_shape])
-    y = tf.placeholder(tf.float32, [None, self.output_shape])
+    self.y = tf.placeholder(tf.float32, [None, self.output_shape])
 
     w_1 = tf.Variable(tf.truncated_normal([self.input_shape + 1, self.n_hidden_units], stddev=0.1))
     w_2 = tf.Variable(tf.truncated_normal([self.n_hidden_units + 1, self.output_shape], stddev=0.1))
@@ -33,14 +34,14 @@ class CABModel:
     F_1 = tf.Variable(tf.eye(self.n_hidden_units + 1))
 
     # Forward Pass, ab_i is the state vector together with bias
-    ab_0 = tf.concat([a_0, tf.tile(tf.ones([1, 1]), [tf.shape(a_0)[0], 1])], 1)
+    ab_0 = tf.concat([self.a_0, tf.tile(tf.ones([1, 1]), [tf.shape(self.a_0)[0], 1])], 1)
     z_1 = tf.matmul(ab_0, w_1)
     a_1 = sigma(z_1)
     ab_1 = tf.concat([a_1, tf.tile(tf.ones([1, 1]), [tf.shape(a_1)[0], 1])], 1)
     z_2 = tf.matmul(ab_1, w_2)
     a_2 = sigma(z_2)
 
-    diff = tf.subtract(a_2, y)
+    diff = tf.subtract(a_2, self.y)
 
     # Backward Pass
     reg2 = tf.Variable(0.001)
@@ -72,7 +73,7 @@ class CABModel:
     ]
 
     # Compute Classification Accuracy
-    acct_mat = tf.equal(tf.argmax(a_2, 1), tf.argmax(y, 1))
+    acct_mat = tf.equal(tf.argmax(a_2, 1), tf.argmax(self.y, 1))
     self.acct_res = tf.reduce_sum(tf.cast(acct_mat, tf.float32))
 
     # Update the old weights, which are the weights before training a task
@@ -82,13 +83,20 @@ class CABModel:
     self.sess.run(tf.global_variables_initializer())
 
   def fit(self, traintype, task_dict, *args, **kwargs):
-    print(kwargs['x'].shape)
-    for i in xrange(10000):
-      res = self.sess.run(self.acct_res, feed_dict={self.a_0: , })
-    pass
+    for i in range(100):
+      self.sess.run(self.step, feed_dict={
+        self.a_0: kwargs['x'].reshape((len(kwargs['x']), self.input_shape)),
+        self.y: kwargs['y']
+      })
+    return None
 
-  def evaluate(self):
-    pass
+  def evaluate(self, *args, **kwargs):
+    res = self.sess.run(self.acct_res, feed_dict={
+        self.a_0: kwargs['x'].reshape((len(kwargs['x']), self.input_shape)),
+        self.y: kwargs['y']
+    })
+    print(res)
+    return res
 
   def summary(self):
     pass

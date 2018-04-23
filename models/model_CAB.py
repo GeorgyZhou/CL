@@ -24,7 +24,7 @@ class CABModel:
 
     # Conceptors for used spaces
     A_0 = np.zeros([self.input_shape, self.input_shape])
-    A_1 = np.zeros([self.n_hidden_units + 1, self.n_hidden_units + 1])
+    A_1 = np.zeros([self.n_hidden_units + 1, self.n_hidden_units])
 
     # Conceptors for free spaces
     F_0 = tf.Variable(tf.eye(self.input_shape))
@@ -53,7 +53,7 @@ class CABModel:
 
     d_ab_1 = tf.matmul(d_z_2, tf.transpose(w_2))
     d_a_1 = d_ab_1[:, :-1]
-    d_z_1 = tf.multiply(d_a_1, sigmaprime(z_1))
+    d_z_1 = tf.multiply(d_a_1, sigma_prime(z_1))
     d_w_1 = tf.matmul(tf.transpose(tf.matmul(ab_0, F_0)), d_z_1)
 
     inc_w_1 = tf.subtract(w_1, w_old_1)
@@ -61,7 +61,7 @@ class CABModel:
     d_w_1 = tf.add(d_w_1, reg_w_1)
 
     eta = tf.constant(0.1)
-    step = [
+    self.step = [
       tf.assign(w_1,
                 tf.subtract(w_1, tf.multiply(eta, d_w_1)))
 
@@ -71,7 +71,7 @@ class CABModel:
 
     # Compute Classification Accuracy
     acct_mat = tf.equal(tf.argmax(a_2, 1), tf.argmax(y, 1))
-    acct_res = tf.reduce_sum(tf.cast(acct_mat, tf.float32))
+    self.acct_res = tf.reduce_sum(tf.cast(acct_mat, tf.float32))
 
     # Update the old weights, which are the weights before training a task
     updateW_old = [tf.assign(w_old_1, w_1), tf.assign(w_old_2, w_2)]
@@ -80,6 +80,9 @@ class CABModel:
     self.sess.run(tf.global_variables_initializer())
 
   def fit(self, traintype, task_dict, *args, **kwargs):
+    print(kwargs['x'].shape)
+    # for i in xrange(10000):
+      # res = self.sess.run(self.acct_res, feed_dict={a_0: , })
     pass
 
   def evaluate(self):

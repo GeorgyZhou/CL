@@ -9,7 +9,7 @@ from SI_original.pathint.optimizers import KOOptimizer, PATH_INT_PROTOCOL
 class SIModel:
   def __init__(self, *args, **kwargs):
     self.keras_loss = kwargs.get('keras_loss', 'sgd')
-    self.input_shape = kwargs.get('input_shape', (28,28,1))
+    self.input_shape = kwargs.get('input_shape', (28, 28, 1))
     self.output_shape = kwargs.get('output_shape', 10)
     self.learning_rate = kwargs.get('learning_rate', 1e-3)
     assert isinstance(self.output_shape, int)

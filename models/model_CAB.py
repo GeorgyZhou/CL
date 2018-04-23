@@ -12,22 +12,24 @@ class CABModel:
     self.input_shape = int(np.prod(kwargs.get('input_shape', (28, 28, 1))))
     self.output_shape = kwargs.get('output_shape', 10)
     self.n_hidden_units = 100
+    
+    print (self.input_shape)
 
-    a_0 = tf.placeholder(tf.float32, [None, self.input_shape])
+    self.a_0 = tf.placeholder(tf.float32, [None, self.input_shape])
     y = tf.placeholder(tf.float32, [None, self.output_shape])
 
-    w_1 = tf.Variable(tf.truncated_normal([self.input_shape, self.n_hidden_units], stddev=0.1))
-    w_2 = tf.Variable(tf.truncated_normal([self.n_hidden_units + 1, self.input_shape], stddev=0.1))
+    w_1 = tf.Variable(tf.truncated_normal([self.input_shape + 1, self.n_hidden_units], stddev=0.1))
+    w_2 = tf.Variable(tf.truncated_normal([self.n_hidden_units + 1, self.output_shape], stddev=0.1))
 
-    w_old_1 = tf.Variable(tf.zeros([self.input_shape, self.input_shape]))
+    w_old_1 = tf.Variable(tf.zeros([self.input_shape + 1, self.n_hidden_units]))
     w_old_2 = tf.Variable(tf.zeros([self.n_hidden_units + 1, 10]))
 
     # Conceptors for used spaces
-    A_0 = np.zeros([self.input_shape, self.input_shape])
-    A_1 = np.zeros([self.n_hidden_units + 1, self.n_hidden_units])
+    A_0 = np.zeros([self.input_shape + 1, self.input_shape + 1])
+    A_1 = np.zeros([self.n_hidden_units + 1, self.n_hidden_units + 1])
 
     # Conceptors for free spaces
-    F_0 = tf.Variable(tf.eye(self.input_shape))
+    F_0 = tf.Variable(tf.eye(self.input_shape + 1))
     F_1 = tf.Variable(tf.eye(self.n_hidden_units + 1))
 
     # Forward Pass, ab_i is the state vector together with bias
@@ -81,8 +83,8 @@ class CABModel:
 
   def fit(self, traintype, task_dict, *args, **kwargs):
     print(kwargs['x'].shape)
-    # for i in xrange(10000):
-      # res = self.sess.run(self.acct_res, feed_dict={a_0: , })
+    for i in xrange(10000):
+      res = self.sess.run(self.acct_res, feed_dict={self.a_0: , })
     pass
 
   def evaluate(self):

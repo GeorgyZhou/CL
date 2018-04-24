@@ -1,5 +1,6 @@
 import tensorflow as tf
 import numpy as np
+import math
 
 from utils.cab_utils import sigma
 from utils.cab_utils import sigma_prime
@@ -121,8 +122,8 @@ class CABModel:
     self.input_shape = int(np.prod(kwargs.get('input_shape', (28, 28, 1))))
     self.output_shape = kwargs.get('output_shape', 10)
     self.n_hidden_units = 100
-    
-    print (self.input_shape)
+    # self.saver = tf.train.Saver()
+    self.is_first = True
 
     self.a_0 = tf.placeholder(tf.float32, [None, self.input_shape])
     self.y = tf.placeholder(tf.float32, [None, self.output_shape])
@@ -132,6 +133,7 @@ class CABModel:
 
     w_old_1 = tf.Variable(tf.zeros([self.input_shape + 1, self.n_hidden_units]))
     w_old_2 = tf.Variable(tf.zeros([self.n_hidden_units + 1, 10]))
+
 
     # Conceptors for used spaces
     self.A_0 = np.zeros([self.input_shape + 1, self.input_shape + 1])
@@ -148,15 +150,17 @@ class CABModel:
     self.ab_1 = tf.concat([a_1, tf.tile(tf.ones([1, 1]), [tf.shape(a_1)[0], 1])], 1)
     z_2 = tf.matmul(self.ab_1, w_2)
     a_2 = sigma(z_2)
-
+    
     diff = tf.subtract(a_2, self.y)
+
+    diff = tf.Print(diff, [a_2, diff], message="A2/Diff is: ")
 
     # Backward Pass
     reg2 = tf.Variable(0.001)
     reg1 = tf.Variable(0.001)
 
     d_z_2 = tf.multiply(diff, sigma_prime(z_2))
-    d_w_2 = tf.matmul(tf.transpose(tf.matmul(self.ab_1, self.F_1)), d_z_2)
+    d_w_2 = tf.matmul(tf.transpose(tf.matmul(self.ab_1, self.F_1)), d_z_2) / 128
 
     inc_w_2 = tf.subtract(w_2, w_old_2)
     reg_w_2 = tf.multiply(reg2, inc_w_2)
@@ -165,13 +169,13 @@ class CABModel:
     d_ab_1 = tf.matmul(d_z_2, tf.transpose(w_2))
     d_a_1 = d_ab_1[:, :-1]
     d_z_1 = tf.multiply(d_a_1, sigma_prime(z_1))
-    d_w_1 = tf.matmul(tf.transpose(tf.matmul(self.ab_0, self.F_0)), d_z_1)
+    d_w_1 = tf.matmul(tf.transpose(tf.matmul(self.ab_0, self.F_0)), d_z_1) / 128
 
     inc_w_1 = tf.subtract(w_1, w_old_1)
     reg_w_1 = tf.multiply(reg1, inc_w_1)
     d_w_1 = tf.add(d_w_1, reg_w_1)
-
-    eta = tf.constant(0.1)
+    
+    eta = tf.constant(0.0001)
     self.step = [
       tf.assign(w_1, tf.subtract(w_1, tf.multiply(eta, d_w_1))),
       tf.assign(w_2, tf.subtract(w_2, tf.multiply(eta, d_w_2)))
@@ -180,28 +184,37 @@ class CABModel:
     # Compute Classification Accuracy
     acct_mat = tf.equal(tf.argmax(a_2, 1), tf.argmax(self.y, 1))
     self.acct_res = tf.reduce_sum(tf.cast(acct_mat, tf.float32))
-    self.loss_res = tf.nn.softmax(a_2)
+
+    self.loss_res = tf.nn.softmax_cross_entropy_with_logits(labels=self.y,
+                                                            logits=a_2)
 
     # Update the old weights, which are the weights before training a task
-    updateW_old = [tf.assign(w_old_1, w_1), tf.assign(w_old_2, w_2)]
+    self.updateW_old = [tf.assign(w_old_1, w_1), tf.assign(w_old_2, w_2)]
 
     self.sess = tf.InteractiveSession()
     self.sess.run(tf.global_variables_initializer())
 
   def fit(self, traintype, task_dict, *args, **kwargs):
-    for i in range(100):
-      self.sess.run(self.step, feed_dict={
-        self.a_0: kwargs['x'].reshape((len(kwargs['x']), self.input_shape)),
-        self.y: kwargs['y']
-      })
+    size = len(kwargs['x'])
+    batch_size = kwargs['batch_size']
+    xs = kwargs['x'].reshape((size, self.input_shape))
+    ys = kwargs['y']
+    self.__pre_fit(xs[:min(500, size), ])
+    for i in range(int(math.ceil(size / batch_size))):
+      x = xs[i * batch_size : min((i+1) * batch_size, size),]
+      y = ys[i * batch_size : min((i+1) * batch_size, size),]
+      for i in range(100):
+        self.sess.run(self.step, feed_dict={self.a_0: x, self.y: y})
+      self.sess.run(self.updateW_old)
     return None
 
   def evaluate(self, *args, **kwargs):
+    size = len(kwargs['x'])
     res = self.sess.run([self.loss_res, self.acct_res], feed_dict={
         self.a_0: kwargs['x'].reshape((len(kwargs['x']), self.input_shape)),
         self.y: kwargs['y']
     })
-    print(res)
+    res[1] = res[1] / size
     return res
 
   def summary(self):
@@ -211,15 +224,19 @@ class CABModel:
     pass
 
   def save_weights(self, fileprefix, overwrite=True):
-    
+    # self.saver.save(self.sess, fileprefix + '.ckpt')
     pass
 
   def load_weights(self, fileprefix):
+    # self.saver.restore(self.sess, fileprefix + '.ckpt')
     pass
 
   def __pre_fit(self, xs):
+    if self.is_first:
+      self.is_first = False
+      return
+    
     ab0_collection = self.sess.run(self.ab_0, feed_dict={self.a_0: xs})
-  
     alpha = 4
     R_a0 = (ab0_collection.T).dot(ab0_collection) / ab0_collection.shape[0]
     U_a0, S_a0, _ = np.linalg.svd(R_a0)

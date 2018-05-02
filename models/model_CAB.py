@@ -128,8 +128,8 @@ class CABModel:
     self.a_0 = tf.placeholder(tf.float32, [None, self.input_shape])
     self.y = tf.placeholder(tf.float32, [None, self.output_shape])
 
-    w_1 = tf.Variable(tf.truncated_normal([self.input_shape + 1, self.n_hidden_units], stddev=0.1))
-    w_2 = tf.Variable(tf.truncated_normal([self.n_hidden_units + 1, self.output_shape], stddev=0.1))
+    self.w_1 = tf.Variable(tf.truncated_normal([self.input_shape + 1, self.n_hidden_units], stddev=0.1))
+    self.w_2 = tf.Variable(tf.truncated_normal([self.n_hidden_units + 1, self.output_shape], stddev=0.1))
 
     w_old_1 = tf.Variable(tf.zeros([self.input_shape + 1, self.n_hidden_units]))
     w_old_2 = tf.Variable(tf.zeros([self.n_hidden_units + 1, 10]))
@@ -145,10 +145,10 @@ class CABModel:
 
     # Forward Pass, ab_i is the state vector together with bias
     self.ab_0 = tf.concat([self.a_0, tf.tile(tf.ones([1, 1]), [tf.shape(self.a_0)[0], 1])], 1)
-    z_1 = tf.matmul(self.ab_0, w_1)
+    z_1 = tf.matmul(self.ab_0, self.w_1)
     a_1 = sigma(z_1)
     self.ab_1 = tf.concat([a_1, tf.tile(tf.ones([1, 1]), [tf.shape(a_1)[0], 1])], 1)
-    z_2 = tf.matmul(self.ab_1, w_2)
+    z_2 = tf.matmul(self.ab_1, self.w_2)
     a_2 = sigma(z_2)
     
     diff = tf.subtract(a_2, self.y)
@@ -162,23 +162,23 @@ class CABModel:
     d_z_2 = tf.multiply(diff, sigma_prime(z_2))
     d_w_2 = tf.matmul(tf.transpose(tf.matmul(self.ab_1, self.F_1)), d_z_2)
 
-    inc_w_2 = tf.subtract(w_2, w_old_2)
+    inc_w_2 = tf.subtract(self.w_2, w_old_2)
     reg_w_2 = tf.multiply(reg2, inc_w_2)
     d_w_2 = tf.add(d_w_2, reg_w_2)
 
-    d_ab_1 = tf.matmul(d_z_2, tf.transpose(w_2))
+    d_ab_1 = tf.matmul(d_z_2, tf.transpose(self.w_2))
     d_a_1 = d_ab_1[:, :-1]
     d_z_1 = tf.multiply(d_a_1, sigma_prime(z_1))
     d_w_1 = tf.matmul(tf.transpose(tf.matmul(self.ab_0, self.F_0)), d_z_1)
 
-    inc_w_1 = tf.subtract(w_1, w_old_1)
+    inc_w_1 = tf.subtract(self.w_1, w_old_1)
     reg_w_1 = tf.multiply(reg1, inc_w_1)
     d_w_1 = tf.add(d_w_1, reg_w_1)
     
     eta = tf.constant(0.0001)
     self.step = [
-      tf.assign(w_1, tf.subtract(w_1, tf.multiply(eta, d_w_1))),
-      tf.assign(w_2, tf.subtract(w_2, tf.multiply(eta, d_w_2)))
+      tf.assign(self.w_1, tf.subtract(self.w_1, tf.multiply(eta, d_w_1))),
+      tf.assign(self.w_2, tf.subtract(self.w_2, tf.multiply(eta, d_w_2)))
     ]
 
     # Compute Classification Accuracy
@@ -189,8 +189,9 @@ class CABModel:
                                                             logits=a_2)
 
     # Update the old weights, which are the weights before training a task
-    self.updateW_old = [tf.assign(w_old_1, w_1), tf.assign(w_old_2, w_2)]
+    self.updateW_old = [tf.assign(w_old_1, self.w_1), tf.assign(w_old_2, self.w_2)]
 
+    # Initialize the
     self.sess = tf.InteractiveSession()
     self.sess.run(tf.global_variables_initializer())
 
@@ -199,13 +200,15 @@ class CABModel:
     batch_size = kwargs['batch_size']
     xs = kwargs['x'].reshape((size, self.input_shape))
     ys = kwargs['y']
-    # self.__pre_fit(xs[:min(500, size), ])
+    self.__pre_fit(xs[:min(500, size), ])
     for i in range(int(math.ceil(size / batch_size))):
       x = xs[i * batch_size : min((i+1) * batch_size, size),]
       y = ys[i * batch_size : min((i+1) * batch_size, size),]
       for i in range(100):
         self.sess.run(self.step, feed_dict={self.a_0: x, self.y: y})
       self.sess.run(self.updateW_old)
+      self.sess.run(tf.reduce_sum(tf.norm(self.w_1)))
+      self.sess.run(tf.reduce_sum(tf.norm(self.w_2)))
     return None
 
   def evaluate(self, *args, **kwargs):

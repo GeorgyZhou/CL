@@ -5,7 +5,6 @@ from tensorflow.contrib.learn.python.learn.datasets import base
 from tensorflow.python.framework import dtypes
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
-from IPython import display
 from copy import deepcopy
 from tensorflow.examples.tutorials.mnist import input_data
 

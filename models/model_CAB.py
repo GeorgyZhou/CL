@@ -153,14 +153,14 @@ class CABModel:
     
     diff = tf.subtract(a_2, self.y)
 
-    diff = tf.Print(diff, [a_2, diff], message="A2/Diff is: ")
+    # diff = tf.Print(diff, [a_2, diff], message="A2/Diff is: ")
 
     # Backward Pass
     reg2 = tf.Variable(0.001)
     reg1 = tf.Variable(0.001)
 
     d_z_2 = tf.multiply(diff, sigma_prime(z_2))
-    d_w_2 = tf.matmul(tf.transpose(tf.matmul(self.ab_1, self.F_1)), d_z_2) / 128
+    d_w_2 = tf.matmul(tf.transpose(tf.matmul(self.ab_1, self.F_1)), d_z_2)
 
     inc_w_2 = tf.subtract(w_2, w_old_2)
     reg_w_2 = tf.multiply(reg2, inc_w_2)
@@ -169,7 +169,7 @@ class CABModel:
     d_ab_1 = tf.matmul(d_z_2, tf.transpose(w_2))
     d_a_1 = d_ab_1[:, :-1]
     d_z_1 = tf.multiply(d_a_1, sigma_prime(z_1))
-    d_w_1 = tf.matmul(tf.transpose(tf.matmul(self.ab_0, self.F_0)), d_z_1) / 128
+    d_w_1 = tf.matmul(tf.transpose(tf.matmul(self.ab_0, self.F_0)), d_z_1)
 
     inc_w_1 = tf.subtract(w_1, w_old_1)
     reg_w_1 = tf.multiply(reg1, inc_w_1)
@@ -199,7 +199,7 @@ class CABModel:
     batch_size = kwargs['batch_size']
     xs = kwargs['x'].reshape((size, self.input_shape))
     ys = kwargs['y']
-    self.__pre_fit(xs[:min(500, size), ])
+    # self.__pre_fit(xs[:min(500, size), ])
     for i in range(int(math.ceil(size / batch_size))):
       x = xs[i * batch_size : min((i+1) * batch_size, size),]
       y = ys[i * batch_size : min((i+1) * batch_size, size),]

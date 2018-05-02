@@ -235,15 +235,15 @@ task_num = 10
 avg_list = []
 SA0_list = []
 SA1_list = []
-prev_list = [[] for x in xrange(task_num)]
+prev_list = [[] for x in range(task_num)]
      
 
 #Iterate over 10 tasks
-for j in xrange(task_num):
-    print "Training MNIST %d" % (j+1)
+for j in range(task_num):
+    print("Training MNIST %d" % (j+1))
     
     #Update the parameters for 10000 times
-    for i in xrange(10000):
+    for i in range(10000):
         batch_xs, batch_ys = mnist_list[j].train.next_batch(50)
 
         sess.run(step, feed_dict = {a_0: batch_xs, y: batch_ys})
@@ -253,32 +253,32 @@ for j in xrange(task_num):
             res = sess.run(acct_res, feed_dict =
                            {a_0:mnist_list[j].validation.images[:1000],
                             y : mnist_list[j].validation.labels[:1000]})
-            print "Validation accuracy:", res/1000
+            print("Validation accuracy:", res/1000)
 
     sess.run(updateW_old)
     
-    print "w_1 norm", sess.run(tf.reduce_sum(tf.norm(w_1)))
-    print "w_2 norm", sess.run(tf.reduce_sum(tf.norm(w_2)))
+    print("w_1 norm", sess.run(tf.reduce_sum(tf.norm(w_1))))
+    print("w_2 norm", sess.run(tf.reduce_sum(tf.norm(w_2))))
     
     #Print the accuracies on testing set of the task just trained on
     res = sess.run(acct_res, feed_dict =
                            {a_0: mnist_list[j].test.images[:100000],
                             y : mnist_list[j].test.labels[:100000]})
-    print "Accuracy on Current Dataset", res/mnist.test.labels.shape[0]
+    print("Accuracy on Current Dataset", res/mnist.test.labels.shape[0])
     
     res_sum = 0
     
-    print "Test on all Previous Datasets:" 
-    for i in xrange(j+1):
+    print("Test on all Previous Datasets:")
+    for i in range(j+1):
         res = sess.run(acct_res, feed_dict =
                                {a_0: mnist_list[i].test.images[:100000],
                                 y : mnist_list[i].test.labels[:100000]})
         acc_res = res/mnist.test.labels.shape[0]
-        print acc_res
+        print(acc_res)
         prev_list[i].append(acc_res)
         res_sum += acc_res
         avg_res = res_sum/(j+1)
-    print "Current Average Accuracy:", avg_res
+    print("Current Average Accuracy:", avg_res)
 
     avg_list.append(avg_res)
     
